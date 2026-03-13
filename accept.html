@@ -1,10 +1,124 @@
 <!DOCTYPE html>
-<html>
+<html lang="zh-CN">
 <head>
-    <title>Acceptance Confirmation</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>eBay 授权处理中</title>
+  <style>
+    body {
+      font-family: Arial, Helvetica, sans-serif;
+      max-width: 760px;
+      margin: 40px auto;
+      padding: 20px;
+      color: #222;
+      line-height: 1.6;
+    }
+    .box {
+      border: 1px solid #ddd;
+      border-radius: 10px;
+      padding: 20px;
+      background: #fafafa;
+    }
+    code {
+      background: #f1f1f1;
+      padding: 2px 6px;
+      border-radius: 4px;
+      word-break: break-all;
+    }
+    .ok { color: #0a7a2f; }
+    .err { color: #b42318; }
+    .muted { color: #666; }
+    a.btn {
+      display: inline-block;
+      margin-top: 12px;
+      padding: 10px 16px;
+      border-radius: 8px;
+      background: #111827;
+      color: #fff;
+      text-decoration: none;
+    }
+  </style>
 </head>
 <body>
-    <h1>Thank You!</h1>
-    <p>Your acceptance has been confirmed.</p>
+  <div class="box">
+    <h2>eBay 授权处理中…</h2>
+    <p id="status" class="muted">正在解析授权结果并转发到本地程序。</p>
+    <div id="details"></div>
+  </div>
+
+  <script>
+    (function () {
+      const LOCAL_CALLBACK = "http://127.0.0.1:8000/callback";
+      const href = window.location.href;
+
+      function escapeHtml(str) {
+        return String(str || "")
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&#39;");
+      }
+
+      function getParam(name) {
+        const regex = new RegExp("[?&]" + name + "=([^&#]*)");
+        const match = href.match(regex);
+        return match ? decodeURIComponent(match[1]) : "";
+      }
+
+      const state = getParam("state");
+      const expiresIn = getParam("expires_in");
+      const error = getParam("error");
+      const errorDescription = getParam("error_description");
+
+      let code = "";
+      const codeMatch = href.match(/[?&]code=([^&]+)/);
+      if (codeMatch) {
+        code = decodeURIComponent(codeMatch[1]);
+      }
+
+      const statusEl = document.getElementById("status");
+      const detailsEl = document.getElementById("details");
+
+      if (error) {
+        statusEl.className = "err";
+        statusEl.textContent = "授权失败。";
+        detailsEl.innerHTML = `
+          <p><strong>error:</strong> <code>${escapeHtml(error)}</code></p>
+          <p><strong>error_description:</strong> <code>${escapeHtml(errorDescription)}</code></p>
+        `;
+        return;
+      }
+
+      if (!code) {
+        statusEl.className = "err";
+        statusEl.textContent = "未获取到授权 code。";
+        detailsEl.innerHTML = `
+          <p>当前页面地址：</p>
+          <p><code>${escapeHtml(href)}</code></p>
+        `;
+        return;
+      }
+
+      const target =
+        LOCAL_CALLBACK +
+        "?state=" + encodeURIComponent(state) +
+        "&code=" + encodeURIComponent(code);
+
+      statusEl.className = "ok";
+      statusEl.textContent = "已获取授权 code，正在跳转到本地程序…";
+
+      detailsEl.innerHTML = `
+        <p><strong>state:</strong> <code>${escapeHtml(state)}</code></p>
+        <p><strong>expires_in:</strong> <code>${escapeHtml(expiresIn)}</code></p>
+        <p class="muted">如果没有自动跳转，请先确认本地 Python 程序正在运行，然后点击下面按钮：</p>
+        <p><a class="btn" href="${target}">手动发送到本地程序</a></p>
+      `;
+
+      setTimeout(function () {
+        window.location.href = target;
+      }, 1200);
+    })();
+  </script>
 </body>
 </html>
