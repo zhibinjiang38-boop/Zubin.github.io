@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>eBay 授权处理中</title>
+  <title>eBay 授权结果</title>
   <style>
     body {
       font-family: Arial, Helvetica, sans-serif;
@@ -24,31 +24,39 @@
       padding: 2px 6px;
       border-radius: 4px;
       word-break: break-all;
+      display: inline-block;
+      max-width: 100%;
+    }
+    textarea {
+      width: 100%;
+      min-height: 140px;
+      margin-top: 10px;
+      font-family: Consolas, monospace;
+      font-size: 14px;
     }
     .ok { color: #0a7a2f; }
     .err { color: #b42318; }
     .muted { color: #666; }
-    a.btn {
-      display: inline-block;
+    button {
       margin-top: 12px;
       padding: 10px 16px;
+      border: none;
       border-radius: 8px;
       background: #111827;
       color: #fff;
-      text-decoration: none;
+      cursor: pointer;
     }
   </style>
 </head>
 <body>
   <div class="box">
-    <h2>eBay 授权处理中…</h2>
-    <p id="status" class="muted">正在解析授权结果并转发到本地程序。</p>
+    <h2>eBay 授权结果</h2>
+    <p id="status" class="muted">正在解析授权结果…</p>
     <div id="details"></div>
   </div>
 
   <script>
     (function () {
-      const LOCAL_CALLBACK = "http://127.0.0.1:8000/callback";
       const href = window.location.href;
 
       function escapeHtml(str) {
@@ -70,12 +78,7 @@
       const expiresIn = getParam("expires_in");
       const error = getParam("error");
       const errorDescription = getParam("error_description");
-
-      let code = "";
-      const codeMatch = href.match(/[?&]code=([^&]+)/);
-      if (codeMatch) {
-        code = decodeURIComponent(codeMatch[1]);
-      }
+      const code = getParam("code");
 
       const statusEl = document.getElementById("status");
       const detailsEl = document.getElementById("details");
@@ -100,25 +103,25 @@
         return;
       }
 
-      const target =
-        LOCAL_CALLBACK +
-        "?state=" + encodeURIComponent(state) +
-        "&code=" + encodeURIComponent(code);
-
       statusEl.className = "ok";
-      statusEl.textContent = "已获取授权 code，正在跳转到本地程序…";
+      statusEl.textContent = "授权成功。请复制下面的 code，用于 Python 脚本换 token。";
 
       detailsEl.innerHTML = `
         <p><strong>state:</strong> <code>${escapeHtml(state)}</code></p>
         <p><strong>expires_in:</strong> <code>${escapeHtml(expiresIn)}</code></p>
-        <p class="muted">如果没有自动跳转，请先确认本地 Python 程序正在运行，然后点击下面按钮：</p>
-        <p><a class="btn" href="${target}">手动发送到本地程序</a></p>
+        <p><strong>授权 code：</strong></p>
+        <textarea id="codeBox" readonly>${escapeHtml(code)}</textarea>
+        <button onclick="copyCode()">复制 code</button>
       `;
-
-      setTimeout(function () {
-        window.location.href = target;
-      }, 1200);
     })();
+
+    function copyCode() {
+      const box = document.getElementById("codeBox");
+      box.select();
+      box.setSelectionRange(0, 999999);
+      document.execCommand("copy");
+      alert("code 已复制");
+    }
   </script>
 </body>
 </html>
